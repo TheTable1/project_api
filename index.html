@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0 ">
+    <meta charset="UTF-8">
+    <title>Project Manager</title>
+    <style>
+    body { font-family: sans-serif; padding: 20px; }
+    input, textarea, button { margin: 5px; padding: 5px; width: 100%; max-width: 400px; }
+    .project { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+  </style>
+  </head>
+  <body>
+
+    <h1>Project Manager</h1>
+
+    <!-- Form เพิ่ม Project -->
+    <h2>เพิ่ม Project</h2>
+    <input type="text" id="pName" placeholder="ชื่อโปรเจกต์">
+    <input type="datetime-local" id="pDateStart" placeholder="วันที่เริ่มต้น">
+    <input type="datetime-local" id="pDateEnd" placeholder="วันที่สิ้นสุด">
+    <input type="text" id="pStatus" placeholder="สถานะ (เช่น In Progress)">
+    <textarea id="pDescription" placeholder="รายละเอียดโปรเจกต์"></textarea>
+    <button onclick="createProject()">สร้างโปรเจกต์</button>
+
+    <hr>
+
+    <!-- แสดงรายการโปรเจกต์ -->
+    <h2>รายการ Project</h2>
+    <div id="projectList"></div>
+
+    <script>
+    const apiUrl = "http://localhost:4000"; // แก้ตามพอร์ต API
+
+    // 📌 อ่าน project ทั้งหมด (คุณสามารถเพิ่ม endpoint GET /projects ได้ใน backend เพื่อให้โหลดทั้งหมด)
+    async function fetchProjects() {
+      document.getElementById("projectList").innerHTML = "";
+      for (let i = 1; i <= 10; i++) { // ตัวอย่าง เรียกจาก id 1-10
+        try {
+          const res = await fetch(`${apiUrl}/project/${i}`);
+          if (!res.ok) continue;
+          const project = await res.json();
+          renderProject(project);
+        } catch (err) {
+          console.error("ไม่พบ project id:", i);
+        }
+      }
+    }
+
+    // 🧾 แสดง Project
+    function renderProject(project) {
+      const div = document.createElement("div");
+      div.className = "project";
+      div.innerHTML = `
+        <b>${project.pName}</b> (${project.pStatus || "ไม่มีสถานะ"})<br>
+        เริ่ม: ${new Date(project.pDateStart).toLocaleString()}<br>
+        สิ้นสุด: ${project.pDateEnd ? new Date(project.pDateEnd).toLocaleString() : "-"}<br>
+        รายละเอียด: ${project.pDescription || "-"}<br>
+        <button onclick="deleteProject(${project.pId})">ลบ</button>
+        <button onclick="editProjectPrompt(${project.pId})">แก้ไข</button>
+      `;
+      document.getElementById("projectList").appendChild(div);
+    }
+
+    // ➕ POST /project/create
+    async function createProject() {
+      const body = {
+        pName: document.getElementById("pName").value,
+        pDateStart: new Date(document.getElementById("pDateStart").value).toISOString(),
+        pDateEnd: document.getElementById("pDateEnd").value ? new Date(document.getElementById("pDateEnd").value).toISOString() : null,
+        pStatus: document.getElementById("pStatus").value,
+        pDescription: document.getElementById("pDescription").value
+      };
+
+      await fetch(`${apiUrl}/project/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+
+      alert("เพิ่ม Project สำเร็จ");
+      fetchProjects();
+    }
+
+    // 🗑️ DELETE /project/delete/{id}
+    async function deleteProject(id) {
+      if (!confirm("ยืนยันการลบ?")) return;
+      await fetch(`${apiUrl}/project/delete/${id}`, { method: "DELETE" });
+      fetchProjects();
+    }
+
+    // ✏️ PUT /project/edit/{id}
+    async function editProjectPrompt(id) {
+      const pName = prompt("ชื่อใหม่:");
+      const pStatus = prompt("สถานะใหม่:");
+
+      if (!pName || !pStatus) return;
+
+      const body = {
+        pName,
+        pDateStart: new Date().toISOString(), // เพื่อให้ค่าไม่ว่าง
+        pStatus
+      };
+
+      await fetch(`${apiUrl}/project/edit/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+
+      alert("แก้ไขโปรเจกต์แล้ว");
+      fetchProjects();
+    }
+
+    fetchProjects(); // โหลดเมื่อเปิดหน้า
+  </script>
+
+  </body>
+</html>
